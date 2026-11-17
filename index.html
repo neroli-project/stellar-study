@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Study（ステラ・スタディ） - 星を巡る勉強手帳 -</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Astronomy Engine (ブラウザ上で動く純粋な天文計算ライブラリ) -->
+    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+    <!-- Google Fonts: Inter & Zen Maru Gothic -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a 60%, #090d16);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.72);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+        .star-glow {
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.25);
+        }
+        /* 月が時間不明で薄く表示される際のアニメーションとスタイル */
+        .moon-uncertain {
+            opacity: 0.45;
+            filter: grayscale(40%);
+            border-style: dashed !important;
+            transition: all 0.3s ease;
+        }
+        .moon-certain {
+            opacity: 1;
+            filter: none;
+            transition: all 0.3s ease;
+        }
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-amber-400 selection:text-slate-900 pb-16">
+
+    <!-- ヘッダー -->
+    <header class="pt-8 pb-6 px-4 text-center max-w-4xl mx-auto">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-950/90 border border-indigo-400/50 text-indigo-100 text-xs font-bold mb-3 shadow-sm">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-300"></i>
+            <span>天文計算エンジン × オーダーメイド学習ナビ</span>
+        </div>
+        <h1 class="text-xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2">
+            <span class="bg-slate-900/90 text-white px-5 py-2.5 rounded-2xl border border-slate-700/70 shadow-md inline-flex flex-wrap items-center justify-center gap-2">
+                <span class="text-amber-400">✦</span>
+                <span>Stellar Study（ステラ・スタディ）</span>
+                <span class="text-amber-300 text-sm sm:text-lg font-medium">- 星を巡る勉強手帳 -</span>
+                <span class="text-amber-400">✦</span>
+            </span>
+        </h1>
+        <p class="text-slate-700 bg-white/90 backdrop-blur-sm border border-slate-200/80 rounded-2xl px-6 py-3 text-xs sm:text-[15px] max-w-2xl mx-auto leading-relaxed font-medium shadow-sm mt-3">
+            生年月日からお子様の「学びの個性」を天文学的に計算。<br>
+            特性に合わせた学習診断と、専用のAI家庭教師プロンプトをお届けします。
+        </p>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 space-y-8">
+
+        <!-- 入力フォームセクション -->
+        <section class="glass-card rounded-3xl p-6 sm:p-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <!-- お子様のお名前（任意） -->
+                <div>
+                    <label for="child-name" class="block text-xs font-medium text-indigo-200 mb-1.5">
+                        お子様のお名前（任意）
+                    </label>
+                    <input type="text" id="child-name" placeholder="例：ゆうと / わたし"
+                        class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition">
+                </div>
+
+                <!-- 生年月日 -->
+                <div>
+                    <label for="birth-date" class="block text-xs font-medium text-amber-300 mb-1.5">
+                        生年月日 <span class="text-rose-400">*</span>
+                    </label>
+                    <input type="date" id="birth-date"
+                        class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 transition">
+                </div>
+
+                <!-- 出生時間 & 不明チェック -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="birth-time" class="text-xs font-medium text-indigo-200">
+                            出生時間
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="unknown-time" class="rounded border-slate-600 bg-slate-800 text-amber-400 focus:ring-amber-400">
+                            <span>不明</span>
+                        </label>
+                    </div>
+                    <input type="time" id="birth-time" value="12:00"
+                        class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 transition disabled:opacity-40">
+                </div>
+
+                <!-- 出生地（タイムゾーン・緯度経度プリセット） -->
+                <div>
+                    <label for="birth-place" class="block text-xs font-medium text-indigo-200 mb-1.5">
+                        生まれた場所
+                    </label>
+                    <select id="birth-place"
+                        class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400 transition">
+                        <option value="139.69,35.68">東京・関東</option>
+                        <option value="141.35,43.06">札幌・北海道</option>
+                        <option value="140.87,38.26">仙台・東北</option>
+                        <option value="136.90,35.18">名古屋・中部</option>
+                        <option value="135.50,34.69">大阪・関西</option>
+                        <option value="134.23,35.50">鳥取・中国</option>
+                        <option value="133.53,33.55">高知・四国</option>
+                        <option value="130.40,33.59">福岡・九州</option>
+                        <option value="127.68,26.21">那覇・沖縄</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 苦手科目・今の目標（AIプロンプトに反映） -->
+            <div class="mt-4 pt-4 border-t border-slate-700/60 flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
+                <div class="flex-1">
+                    <label for="study-goal" class="block text-xs font-medium text-indigo-200 mb-1.5">
+                        今いちばん取り組みたいこと・苦手科目（AIプロンプトに反映されます）
+                    </label>
+                    <input type="text" id="study-goal" placeholder="例：算数の文章題、漢字の暗記、毎日の宿題習慣など"
+                        class="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition">
+                </div>
+                <button id="calculate-btn" type="button"
+                    class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                    <i data-lucide="wand-2" class="w-4 h-4"></i>
+                    <span>星の学習カルテを作る</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 結果エリア（初期表示時に自動計算して表示） -->
+        <div id="results-container" class="space-y-8">
+
+            <!-- ③ 保護者向け「今日の声かけ・サポート予報」 -->
+            <section class="glass-card rounded-3xl p-6 sm:p-8 border-amber-400/30 relative overflow-hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="p-2 rounded-xl bg-amber-400/20 text-amber-300">
+                            <i data-lucide="sun-moon" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-bold text-white">保護者向け：今日の声かけ・サポート予報</h2>
+                            <p class="text-xs text-slate-400" id="today-date-label">現在の空の星模様から算出</p>
+                        </div>
+                    </div>
+                    <span id="transit-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/25 border border-indigo-400/30 text-indigo-200 text-xs font-medium self-start sm:self-auto">
+                        今日の月：計算中...
+                    </span>
+                </div>
+
+                <div id="transit-forecast-box" class="bg-slate-900/70 rounded-2xl p-5 border border-slate-700/80 space-y-4">
+                    <!-- JSで動的に挿入 -->
+                </div>
+            </section>
+
+            <!-- 新規追加：星のタイプ別「おすすめ勉強法＆ラッキーグッズ」 -->
+            <section class="glass-card rounded-3xl p-6 sm:p-8 border-indigo-400/30 relative overflow-hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                    <div class="flex items-center gap-3">
+                        <span class="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300">
+                            <i data-lucide="backpack" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-bold text-white">星のタイプ別「おすすめ勉強法＆ラッキーグッズ」</h2>
+                            <p class="text-xs text-slate-300 mt-0.5">太陽（やる気）と水星（学び方）のグループから、ぴったりの道具と勉強法をご提案</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- お子様の該当グループバッジ -->
+                <div id="element-user-badges" class="flex flex-wrap gap-2 mb-4">
+                    <!-- JSで動的に挿入 -->
+                </div>
+
+                <!-- 4グループ切り替えタブ -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5" id="element-tabs">
+                    <button type="button" data-element="fire" class="element-tab-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span>🔥 火のグループ</span>
+                    </button>
+                    <button type="button" data-element="earth" class="element-tab-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span>🌱 地のグループ</span>
+                    </button>
+                    <button type="button" data-element="air" class="element-tab-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span>🍃 風のグループ</span>
+                    </button>
+                    <button type="button" data-element="water" class="element-tab-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span>💧 水のグループ</span>
+                    </button>
+                </div>
+
+                <!-- 選択されたグループの詳細カード -->
+                <div id="element-guide-content" class="bg-slate-900/75 rounded-2xl p-5 sm:p-6 border border-slate-700/80">
+                    <!-- JSで動的に挿入 -->
+                </div>
+            </section>
+
+            <!-- ② 子ども専用「AI家庭教師」プロンプト自動生成 -->
+            <section class="glass-card rounded-3xl p-6 sm:p-8 star-glow border-amber-400/40">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="p-2 rounded-xl bg-amber-400/20 text-amber-300">
+                            <i data-lucide="bot" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-bold text-white">子ども専用「AI家庭教師」プロンプト</h2>
+                            <p class="text-xs text-slate-300">ChatGPTやGeminiにそのまま貼り付けて使えるオーダーメイド指示文</p>
+                        </div>
+                    </div>
+                    <button id="copy-prompt-btn" type="button"
+                        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 shadow-md cursor-pointer self-start sm:self-auto">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        <span id="copy-btn-text">プロンプトをコピー</span>
+                    </button>
+                </div>
+
+                <!-- プロンプト構成の3つの柱（視覚バッジ） -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4 text-xs">
+                    <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3">
+                        <div class="font-bold text-sky-300 mb-0.5">1. 基本の教え方 ◀ 水星・木星</div>
+                        <div class="text-slate-300" id="pillar-teaching">-</div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3">
+                        <div class="font-bold text-amber-300 mb-0.5">2. AIの口調・キャラ ◀ 太陽・金星</div>
+                        <div class="text-slate-300" id="pillar-persona">-</div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3">
+                        <div class="font-bold text-emerald-300 mb-0.5">3. つまずきフォロー ◀ 月・火星・土星</div>
+                        <div class="text-slate-300" id="pillar-support">-</div>
+                    </div>
+                </div>
+
+                <!-- 生成されたプロンプト本文 -->
+                <div class="relative">
+                    <textarea id="generated-prompt" rows="10" readonly
+                        class="w-full rounded-2xl bg-slate-950/90 border border-slate-700 p-4 text-xs sm:text-sm text-slate-200 leading-relaxed focus:outline-none focus:border-amber-400 font-mono"></textarea>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
+                    <i data-lucide="info" class="w-3.5 h-3.5 text-amber-400 shrink-0"></i>
+                    <span>使い方：上のプロンプトをコピーしてAIチャットに送信したあと、「分数の割り算を教えて！」「今日の漢字テストの練習を出して！」と話しかけてみてください。</span>
+                </p>
+            </section>
+
+            <!-- ① 7天体から読み解く「学習タイプ診断」 -->
+            <section class="space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 px-1">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="orbit" class="w-5 h-5 text-amber-400"></i>
+                            <span>7つの星から読み解く「学びの個性カルテ」</span>
+                        </h2>
+                        <p class="text-xs text-slate-300 mt-0.5">Astronomy Engine により算出した出生時の天体配置（黄経）から分析しています</p>
+                    </div>
+                    <div id="moon-notice" class="hidden text-xs text-amber-300 bg-amber-950/60 border border-amber-500/30 px-3 py-1.5 rounded-xl">
+                        ※出生時間が不明のため「月」は正午基準の参考値（薄く表示）です
+                    </div>
+                </div>
+
+                <!-- 重要3天体（水星・月・火星）のピックアップ -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="core-planets-grid">
+                    <!-- JSで動的にカードを生成 -->
+                </div>
+
+                <!-- 残り4天体（太陽・金星・木星・土星）の詳細カード -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="sub-planets-grid">
+                    <!-- JSで動的にカードを生成 -->
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- コピー通知トースト -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-slate-950 font-bold text-sm px-5 py-3 rounded-full shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 flex items-center gap-2 z-50">
+        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+        <span>AI家庭教師プロンプトをコピーしました！</span>
+    </div>
+
+    <script>
+        // 12星座の基本データと学習特性マスタ
+        const ZODIAC_SIGNS = [
+            { name: "牡羊座", symbol: "♈", element: "fire", quality: "cardinal", keyword: "スピード・挑戦・直感" },
+            { name: "牡牛座", symbol: "♉", element: "earth", quality: "fixed", keyword: "マイペース・五感・着実" },
+            { name: "双子座", symbol: "♊", element: "air", quality: "mutable", keyword: "好奇心・テンポ・言語化" },
+            { name: "蟹座",   symbol: "♋", element: "water", quality: "cardinal", keyword: "共感・安心感・イメージ" },
+            { name: "獅子座", symbol: "♌", element: "fire", quality: "fixed", keyword: "称賛・自己表現・ドラマ" },
+            { name: "乙女座", symbol: "♍", element: "earth", quality: "mutable", keyword: "整理整頓・分析・正確さ" },
+            { name: "天秤座", symbol: "♎", element: "air", quality: "cardinal", keyword: "対話・バランス・スマートさ" },
+            { name: "蠍座",   symbol: "♏", element: "water", quality: "fixed", keyword: "集中力・深掘り・探究心" },
+            { name: "射手座", symbol: "♐", element: "fire", quality: "mutable", keyword: "全体像・冒険・なぜ？の追求" },
+            { name: "山羊座", symbol: "♑", element: "earth", quality: "cardinal", keyword: "目標達成・計画・ステップ" },
+            { name: "水瓶座", symbol: "♒", element: "air", quality: "fixed", keyword: "論理・独自性・ひらめき" },
+            { name: "魚座",   symbol: "♓", element: "water", quality: "mutable", keyword: "物語・想像力・やさしい雰囲気" }
+        ];
+
+        // 4エレメント別の「おすすめ勉強法＆ラッキーグッズ」マスタ
+        const ELEMENT_STUDY_GUIDES = {
+            fire: {
+                title: "🔥 火のグループ（牡羊座・獅子座・射手座）",
+                accentClass: "text-orange-300 border-orange-400/40 bg-orange-500/15",
+                activeTabClass: "bg-orange-500/25 border-orange-400 text-orange-200 shadow-md",
+                feature: "競争やゲームが大好き。ダラダラやるより、短時間でパッと集中するタイプです。",
+                method: "10分タイマーをセットして「時間内に何問解けるかチャレンジ！」にするのがぴったりです。",
+                goods: [
+                    { name: "デジタルタイマー・砂時計", desc: "残り時間が見えると燃えます。" },
+                    { name: "赤やオレンジのペン・付箋", desc: "情熱の色でやる気がアップします。" },
+                    { name: "ごほうびスタンプ・シール", desc: "目標クリアの達成感を目に見える形にします。" }
+                ]
+            },
+            earth: {
+                title: "🌱 地のグループ（牡牛座・乙女座・山羊座）",
+                accentClass: "text-emerald-300 border-emerald-400/40 bg-emerald-500/15",
+                activeTabClass: "bg-emerald-500/25 border-emerald-400 text-emerald-200 shadow-md",
+                feature: "コツコツ積み上げるのが得意。触り心地や、ノートがきれいに整うことで安心するタイプです。",
+                method: "毎日決まった時間に1ページずつ進める、チェックリストを塗りつぶす学習が合っています。",
+                goods: [
+                    { name: "書き心地のいい鉛筆・ノート", desc: "五感が鋭いので、紙質やペンの滑らかさにこだわると集中力が続きます。" },
+                    { name: "お気に入りの消しゴムや定規", desc: "道具を大切に使うことで勉強への愛着が湧きます。" },
+                    { name: "進捗グラフ表", desc: "自分がやった分が「形」として残ると自信になります。" }
+                ]
+            },
+            air: {
+                title: "🍃 風のグループ（双子座・天秤座・水瓶座）",
+                accentClass: "text-sky-300 border-sky-400/40 bg-sky-500/15",
+                activeTabClass: "bg-sky-500/25 border-sky-400 text-sky-200 shadow-md",
+                feature: "好奇心旺盛で、おしゃべりや新しいものが大好き。じっと座り続けるより、工夫しながら学ぶタイプです。",
+                method: "声に出して読む、誰かに教えるつもりで説明する、タブレット学習やカードゲーム感覚の暗記が向いています。",
+                goods: [
+                    { name: "単語カード・フラッシュカード", desc: "ゲーム感覚でめくるのが楽しいです。" },
+                    { name: "ホワイトボード（ミニサイズ）", desc: "ノートより自由に書いたり消したりできるとアイデアが広がります。" },
+                    { name: "カラーペン（水色・黄色）", desc: "爽やかな色で頭の中をスッキリ整理できます。" }
+                ]
+            },
+            water: {
+                title: "💧 水のグループ（蟹座・蠍座・魚座）",
+                accentClass: "text-indigo-300 border-indigo-400/40 bg-indigo-500/15",
+                activeTabClass: "bg-indigo-500/25 border-indigo-400 text-indigo-200 shadow-md",
+                feature: "想像力が豊かで、気持ちや安心感を大切にするタイプ。好きなキャラクターや物語と結びつくと一気に覚えます。",
+                method: "歴史や漢字をストーリーにして覚える、イラストを描きながらまとめる勉強法がぴったりです。",
+                goods: [
+                    { name: "好きなキャラクターの文房具", desc: "「一緒にがんばろう！」と思える相棒がいると安心します。" },
+                    { name: "ふんわりしたクッションやブランケット", desc: "机の周りを居心地のいい「秘密基地」にすると落ち着きます。" },
+                    { name: "パステルカラーのマーカー", desc: "優しい色合いでノートを彩ると心が安定します。" }
+                ]
+            }
+        };
+
+        let currentUserSunElement = "earth";
+        let currentUserMercuryElement = "earth";
+        let selectedGuideElement = "earth";
+
+        // 4グループ別「おすすめ勉強法＆ラッキーグッズ」の描画
+        function renderElementGuide(elementKey) {
+            selectedGuideElement = elementKey;
+            const guide = ELEMENT_STUDY_GUIDES[elementKey];
+
+            // タブのアクティブ状態更新
+            document.querySelectorAll('.element-tab-btn').forEach(btn => {
+                const el = btn.getAttribute('data-element');
+                const g = ELEMENT_STUDY_GUIDES[el];
+                if (el === elementKey) {
+                    btn.className = `element-tab-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer ${g.activeTabClass}`;
+                } else {
+                    btn.className = "element-tab-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold border border-slate-700/80 bg-slate-900/50 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition flex items-center justify-center gap-1.5 cursor-pointer";
+                }
+            });
+
+            // 該当バッジの表示
+            const badges = [];
+            if (elementKey === currentUserSunElement) {
+                badges.push('<span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/40">☀ あなたの太陽グループ</span>');
+            }
+            if (elementKey === currentUserMercuryElement) {
+                badges.push('<span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-400/20 text-sky-200 border border-sky-400/40">☿ あなたの水星グループ</span>');
+            }
+
+            const goodsHtml = guide.goods.map(item => `
+                <div class="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700/70 flex items-start gap-3">
+                    <span class="mt-0.5 p-1.5 rounded-lg bg-amber-400/15 text-amber-300 shrink-0">
+                        <i data-lucide="gift" class="w-4 h-4"></i>
+                    </span>
+                    <div>
+                        <div class="font-bold text-sm text-white">${item.name}</div>
+                        <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">${item.desc}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('element-guide-content').innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/70 pb-3">
+                        <h3 class="text-base sm:text-lg font-bold text-white">${guide.title}</h3>
+                        <div class="flex flex-wrap gap-1.5">${badges.join('')}</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/60">
+                            <div class="text-xs font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                                <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+                                <span>特徴</span>
+                            </div>
+                            <p class="text-sm text-slate-200 leading-relaxed">${guide.feature}</p>
+                        </div>
+                        <div class="bg-indigo-950/50 rounded-xl p-4 border border-indigo-500/25">
+                            <div class="text-xs font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                                <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                                <span>おすすめの勉強法</span>
+                            </div>
+                            <p class="text-sm text-slate-200 leading-relaxed">${guide.method}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs font-bold text-amber-300 mb-2.5 flex items-center gap-1.5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                            <span>やる気を引き出すサポートグッズ</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            ${goodsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            lucide.createIcons();
+        }
+
+        // 天体ごとの学習分析ロジック
+        const PLANET_PROFILES = {
+            Mercury: {
+                title: "水星（知性・学び方）",
+                icon: "brain",
+                color: "text-sky-300",
+                bgBadge: "bg-sky-500/20 text-sky-200",
+                getAnalysis: (sign) => {
+                    const map = {
+                        "牡羊座": { style: "直感＆スピード型", desc: "長い前置きより、まず問題を解きながら覚えるタイプ。テンポよく短時間で区切ると集中力が爆発します。", prompt: "結論から先に短く伝え、テンポよく一問一答やクイズ形式で進めてください。" },
+                        "牡牛座": { style: "五感＆じっくり定着型", desc: "自分のペースで納得いくまで噛み砕くと強いタイプ。声に出して読む・手を動かして書くと記憶に深く残ります。", prompt: "急かさず一歩ずつ丁寧に解説し、具体的なモノや日常の感覚に例えて納得できるように教えてください。" },
+                        "双子座": { style: "好奇心＆ゲーム感覚型", desc: "知的好奇心が旺盛で、会話のキャッチボールやクイズ形式が大好き！飽きる前に話題を変えるとどんどん吸収します。", prompt: "会話形式やクイズ形式を取り入れ、豆知識を交えながらテンポよく楽しく教えてください。" },
+                        "蟹座":   { style: "共感＆ストーリー記憶型", desc: "感情や身近なエピソードと結びつくと一気に覚えるタイプ。安心できる優しい雰囲気だと理解力がぐんと伸びます。", prompt: "優しく寄り添う口調で、登場人物の気持ちや身近な物語に例えながら分かりやすく教えてください。" },
+                        "獅子座": { style: "ドラマチック＆発表型", desc: "「わかった！」「すごい！」と実感できると輝き出すタイプ。自分が先生役になって説明すると理解が深まります。", prompt: "「すごい発見だね！」「さすが！」と大げさなくらい褒めながら、ドラマチックに楽しく教えてください。" },
+                        "乙女座": { style: "論理整理＆ステップ分析型", desc: "情報を分類したり、順序立てて整理するのが得意。細かいルールや手順が明確になるとスッキリ理解できます。", prompt: "箇条書きや手順（ステップ1、2、3）を使って論理的に整理しながら、正確に順を追って教えてください。" },
+                        "天秤座": { style: "対話＆バランス比較型", desc: "「AとBを比べるとどう違う？」とバランスよく比較しながら学ぶのが得意。スマートな対話形式で力が伸びます。", prompt: "丁寧でスマートな対話形式で、「AとBの違い」を比較したり選択肢を出したりしながら教えてください。" },
+                        "蠍座":   { style: "一点集中＆本質深掘り型", desc: "「なぜそうなるのか？」の裏側まで徹底的に納得したい探究者タイプ。興味を持つと驚くべき集中力を発揮します。", prompt: "表面的な暗記ではなく、「なぜそうなるのか？」という根本の仕組みや秘密を解き明かすように深く教えてください。" },
+                        "射手座": { style: "全体像＆冒険ワクワク型", desc: "細かい暗記から入るのは苦手。「この単元は何の役に立つのか」という大きな地図を先に見せると一気に加速します。", prompt: "細かい暗記から入らず、まず全体の大きな流れや『これを知るとどんな世界が広がるか』という本質から教えてください。" },
+                        "山羊座": { style: "実用＆ゴール逆算型", desc: "「テストで何点取れるか」「将来どう役立つか」が分かると燃える現実派。無駄のない効率的な学び方を好みます。", prompt: "無駄を省いて要点を明確にし、『これを覚えるとどんな問題が解けるようになるか』というゴールを示して教えてください。" },
+                        "水瓶座": { style: "ひらめき＆法則発見型", desc: "独自の視点でルールや法則を見つけるのが得意。「当たり前」を疑い、パズルを解くように学ぶと楽しくなります。", prompt: "「実はここにはこんな法則が隠れているよ」とパズルや謎解きのような知的な切り口で教えてください。" },
+                        "魚座":   { style: "イメージ＆イマジネーション型", desc: "頭の中に絵や映像を浮かべて理解するタイプ。図解やイラスト、物語風の解説だとスッと心に入ります。", prompt: "豊かな比喩やイメージしやすい例え話、頭の中に絵が浮かぶようなストーリー仕立てで優しく解説してください。" }
+                    };
+                    return map[sign.name];
+                }
+            },
+            Moon: {
+                title: "月（リラックス・安心環境）",
+                icon: "moon",
+                color: "text-amber-200",
+                bgBadge: "bg-amber-500/20 text-amber-200",
+                getAnalysis: (sign) => {
+                    const map = {
+                        "牡羊座": { style: "活気＆すぐ動ける環境", desc: "静まり返った部屋より、少し活気がある方がやる気が出ます。思い立ったらすぐ取りかかれる机の配置が吉。", prompt: "迷ったり止まったりした時は、深く考え込ませず「まずは1問だけやってみよう！」と軽やかに背中を押してください。" },
+                        "牡牛座": { style: "五感が心地よいマイ空間", desc: "お気に入りの文房具、好きな飲み物、心地よい椅子など、五感が満たされると安心し、粘り強く集中できます。", prompt: "焦らされると強いストレスを感じるため、絶対に急かさず、ゆったり落ち着いた安心感のあるペースを保ってください。" },
+                        "双子座": { style: "風通しのよいリビング学習", desc: "完全に孤立するより、家族の気配やちょっとした音があるリビング学習が快適。場所を時々変えるのも効果的です。", prompt: "つまずいた時は深刻にならず、「ちょっと気分転換に別の角度から見てみようか」と軽やかに話題を切り替えてください。" },
+                        "蟹座":   { style: "家族の気配＆安心ホーム", desc: "「見守られている」という安心感が一番のエネルギー。リビングなど家族の近くで学ぶと心が安定します。", prompt: "間違えた時は絶対に否定せず、「ここまで頑張ったね、大丈夫だよ」とまず気持ちを丸ごと受け止めて安心させてください。" },
+                        "獅子座": { style: "注目＆応援されるステージ", desc: "頑張っている姿を誰かに見ていてもらえると安心します。解けた問題を家族に披露する時間を作ると最高です。", prompt: "プライドを傷つけないよう配慮し、小さな正解でも「さすが！カッコいい！」とたくさん褒めて自信を守ってください。" },
+                        "乙女座": { style: "整頓されたスッキリ机", desc: "机の上が散らかっていると気が散りやすいタイプ。筆記用具が整い、やるべきことが明確だと心が落ち着きます。", prompt: "間違いを気にしすぎて不安になりやすいので、「ここは完璧！あとはここを直すだけだよ」と具体的に安心させてください。" },
+                        "天秤座": { style: "おしゃれ＆調和のとれた空間", desc: "殺風景な場所より、きれいに整った明るい空間でやる気がアップ。誰かと相談しながら進められると安心します。", prompt: "威圧的な態度はNGです。常に穏やかでフェアなパートナーのように、優しく対話しながら寄り添ってください。" },
+                        "蠍座":   { style: "自分だけの集中シェルター", desc: "途中で邪魔されない静かな空間や、自分だけの世界に没頭できる環境があると安心し、深い集中状態に入れます。", prompt: "中途半端な励ましより、「君なら絶対に乗り越えられる」と真剣に信頼していることを伝えて寄り添ってください。" },
+                        "射手座": { style: "開放感＆のびのびスペース", desc: "狭い部屋に閉じ込められる感覚が苦手。窓の近くや広々としたテーブルなど、開放感のある場所が合っています。", prompt: "細かいミスでクヨクヨしないよう、「大丈夫、大筋はバッチリ合ってるよ！」と明るくおおらかに励ましてください。" },
+                        "山羊座": { style: "静かで規律ある学習環境", desc: "「ここは勉強する場所」と決まった静かな環境と、いつものルーティンがあると心が落ち着き力を発揮します。", prompt: "感情的な慰めよりも、「ここまでは確実にできているから大丈夫」と事実に基づいた冷静な安心感を与えてください。" },
+                        "水瓶座": { style: "自由＆マイペースな空間", desc: "「こうしなさい」と縛られない自由な環境が安心の鍵。自分なりのルールで進められる空間が一番集中できます。", prompt: "押し付けがましい指示は避け、「どのやり方で進めるか自分で選んでいいよ」と自主性を尊重して安心させてください。" },
+                        "魚座":   { style: "やさしい音楽＆癒やし空間", desc: "ピリピリした空気や叱られる気配にとても敏感。穏やかなBGMや温かい飲み物がある優しい空間で心が整います。", prompt: "不安や苦手意識に寄り添い、「最初は誰でも難しいよね、一緒にゆっくり進もうね」と包み込むように励ましてください。" }
+                    };
+                    return map[sign.name];
+                }
+            },
+            Mars: {
+                title: "火星（やる気スイッチ）",
+                icon: "flame",
+                color: "text-rose-300",
+                bgBadge: "bg-rose-500/20 text-rose-200",
+                getAnalysis: (sign) => {
+                    const map = {
+                        "牡羊座": { style: "タイムアタック＆勝負燃え型", desc: "「3分で何問解けるか競争！」のようなゲームや勝負事で一気にエンジン全開！スタートダッシュが武器です。", prompt: "「よーいドン！3分チャレンジ！」のように、ゲーム感覚のタイムアタックや挑戦ミッションを出してやる気を引き出してください。" },
+                        "牡牛座": { style: "ご褒美＆マイペース完遂型", desc: "一度エンジンがかかると最後までやり抜く底力あり！「終わったら好きなおやつ」など明確なご褒美が効きます。", prompt: "自分のペースを守らせつつ、「これをクリアしたら達成だね！」と着実な前進を実感させてやる気を引き出してください。" },
+                        "双子座": { style: "クイズ＆マルチタスク燃え型", desc: "単調な反復練習はすぐ飽きますが、次々と新しいクイズが出たり、豆知識が増えたりするとワクワクして燃えます。", prompt: "単調な練習を避け、「次のレベルの問題に挑戦する？」「この裏ワザ知ってる？」と好奇心を刺激してやる気を引き出してください。" },
+                        "蟹座":   { style: "誰かのため＆応援燃え型", desc: "「お母さんが喜んでくれる」「先生を驚かせたい」など、大切な人の笑顔や応援が最大のモチベーションになります。", prompt: "「一緒に頑張ろう！」「解けたらすごく嬉しいな」とチームメイトのように伴走し、共感でやる気を引き出してください。" },
+                        "獅子座": { style: "ヒーロー＆称賛燃え型", desc: "「難しい問題に立ち向かうカッコいい自分」に燃えるタイプ！特別な称号や花マルをもらうと無敵になります。", prompt: "難しい問題には「これは上級者向けのボス問題だ！君なら倒せるか？」とヒーロー扱いしてやる気を引き出してください。" },
+                        "乙女座": { style: "タスク消化＆完璧クリア型", desc: "チェックリストを一つずつ消していく達成感でやる気が湧きます。ケアレスミスをゼロにすることに燃える職人肌。", prompt: "小さなクリア目標を提示し、「1つ目クリア！次は2つ目だね」とタスクを完遂する気持ちよさでやる気を引き出してください。" },
+                        "天秤座": { style: "スマート解決＆バディ燃え型", desc: "泥臭い根性論より、「いかにスマートに効率よく解くか」に燃えます。いい相棒と一緒に進められると力が湧きます。", prompt: "「このコツを使うとすごくスマートに解けるよ」と洗練された解法を見せ、良き相棒としてやる気を引き出してください。" },
+                        "蠍座":   { style: "難問突破＆没頭燃え型", desc: "簡単な問題より「ちょっと手強い難問」を自力で解き明かした時に強い快感を覚えます。驚異の粘り強さの持ち主。", prompt: "「実はこれ、ちょっと手強い問題なんだけど挑戦してみる？」と探究心と本気スイッチを刺激してやる気を引き出してください。" },
+                        "射手座": { style: "冒険クリア＆レベルアップ型", desc: "RPGの冒険のように「新しいステージへ進む感覚」で燃えます。自由度が高く、少し背伸びした目標がぴったり。", prompt: "学習をRPGの冒険やレベルアップに見立て、「これをマスターしたら次のステージだ！」とワクワクさせてやる気を引き出してください。" },
+                        "山羊座": { style: "目標達成＆ランクアップ型", desc: "「今週中にここまで終わらせる」「目標点数を超える」など、具体的な数値目標や階段を登る達成感で燃えます。", prompt: "明確なゴールと達成基準を示し、「あと少しで目標達成だね」と努力の積み重ねを評価してやる気を引き出してください。" },
+                        "水瓶座": { style: "オリジナル攻略＆ひらめき型", desc: "人と同じやり方より「自分だけの解き方・覚え方」を発明した時に燃えます。知的な面白さがあると止まりません。", prompt: "「自分なりの覚え方を工夫してみよう」「別の解き方はあるかな？」と独自性を刺激してやる気を引き出してください。" },
+                        "魚座":   { style: "イメージ達成＆優しさ燃え型", desc: "競争で煽られるより、楽しい世界観の中で「誰かを助けるストーリー」などにすると驚くほど力を発揮します。", prompt: "競争で煽らず、「この謎を解いて物語をハッピーエンドにしよう！」と優しい世界観の中でやる気を引き出してください。" }
+                    };
+                    return map[sign.name];
+                }
+            },
+            Sun: {
+                title: "太陽（目的意識・やりがい）",
+                icon: "sun",
+                color: "text-amber-400",
+                getAnalysis: (sign) => {
+                    const elMap = {
+                        fire: "「これをマスターしたらこんなすごいことができる！」というワクワクする未来や挑戦心を見せることで、本来の輝きが引き出されます。",
+                        earth: "「テストの点数アップ」「確実に身につくスキル」など、具体的で目に見える成果や実用的なメリットを提示するとやりがいを感じます。",
+                        air: "「知らなかった仕組みが分かる面白さ」「誰かに話したくなる知識」など、知的好奇心とコミュニケーションが学びの原動力です。",
+                        water: "「物語の世界を味わうこと」「人の気持ちや背景を深く理解すること」など、心が動く体験と結びつくと大きな力を発揮します。"
+                    };
+                    return {
+                        desc: elMap[sign.element],
+                        prompt: elMap[sign.element]
+                    };
+                }
+            },
+            Venus: {
+                title: "金星（楽しさ・心地よい入り口）",
+                icon: "heart",
+                color: "text-pink-300",
+                getAnalysis: (sign) => {
+                    const map = {
+                        fire: "テンポの良いリズム感や、ちょっとしたゲーム要素・クイズを取り入れると、勉強が一気に「楽しい遊び」に変わります。",
+                        earth: "カラフルで書き心地の良いペンやノートを使ったり、図や表をきれいにまとめたりすることで学ぶ楽しさが倍増します。",
+                        air: "会話のキャッチボールや、面白い言葉遊び・クイズ形式にすることで、苦手意識が消えて楽しく取り組めます。",
+                        water: "キャラクターが登場する物語風の解説や、イメージしやすいイラスト・例え話を使うと、心がワクワクして好きになります。"
+                    };
+                    return {
+                        desc: map[sign.element],
+                        prompt: map[sign.element]
+                    };
+                }
+            },
+            Jupiter: {
+                title: "木星（得意分野・伸びしろ）",
+                icon: "sparkles",
+                color: "text-purple-300",
+                getAnalysis: (sign) => {
+                    const map = {
+                        "牡羊座": "新しい単元のスタートダッシュや、直感で答えを導き出す問題に強い伸びしろがあります。",
+                        "牡牛座": "一度覚えた知識を長期記憶として定着させる力と、コツコツ積み上げる継続力が最大の武器です。",
+                        "双子座": "言葉のセンスや情報の吸収スピードが抜群！複数の知識を結びつけて応用する力に優れています。",
+                        "蟹座":   "国語の読解や歴史の人物ドラマなど、背景や感情を読み取る分野で大きな才能を発揮します。",
+                        "獅子座": "自分の意見を表現することや、全体のテーマを堂々と捉える力に優れた伸びしろがあります。",
+                        "乙女座": "細かなルールや計算の正確さ、情報を整理して法則を見つける分析力が大きな強みです。",
+                        "天秤座": "異なる視点から物事を比較する力や、筋道を立ててスマートに説明する力に長けています。",
+                        "蠍座":   "一つのテーマを深く掘り下げる探究心と、本質を見抜く集中力が圧倒的な強みになります。",
+                        "射手座": "細かい暗記よりも、全体の大きな流れや「なぜそうなるのか」という本質を掴む力が抜群です。",
+                        "山羊座": "目標に向かって計画的にステップを踏む力と、応用問題を着実に攻略する粘り強さが武器です。",
+                        "水瓶座": "理科や数学の法則発見、プログラミング的思考など、論理とひらめきを掛け合わせる分野が得意です。",
+                        "魚座":   "豊かな想像力で図形や文章のイメージを膨らませ、直感的に全体を理解する力に優れています。"
+                    };
+                    return {
+                        desc: map[sign.name],
+                        prompt: `お子様の強みである「${map[sign.name]}」というアプローチに結びつけて解説してください。`
+                    };
+                }
+            },
+            Saturn: {
+                title: "土星（つまずき克服・継続のコツ）",
+                icon: "shield-check",
+                color: "text-emerald-300",
+                getAnalysis: (sign) => {
+                    const map = {
+                        fire: "最初に勢いよく進めたあと、途中で飽きたり焦ったりしやすい傾向があります。「まずは5分だけ」「60点でOK」とハードルを下げると継続できます。",
+                        earth: "真面目で完璧主義になりやすく、分からない問題があると手が止まりがちです。「間違えても大丈夫、まずはここまでやろう」と安心させると伸びます。",
+                        air: "頭で考えすぎて手が止まったり、気が散ったりしやすい傾向があります。やることを小さなチェックリストにして1つずつ消すと安定します。",
+                        water: "苦手意識や不安を感じると心が重くなりやすい傾向があります。「一緒に少しずつ進めよう」と寄り添い、スモールステップで成功体験を積むと克服できます。"
+                    };
+                    return {
+                        desc: map[sign.element],
+                        prompt: map[sign.element]
+                    };
+                }
+            }
+        };
+
+        // Astronomy Engine を使って天体の黄経（0〜360度）と12星座を計算する関数
+        function getPlanetZodiac(bodyName, dateObj) {
+            let eclipticLon = 0;
+            if (bodyName === 'Sun') {
+                const sunPos = Astronomy.SunPosition(dateObj);
+                eclipticLon = sunPos.elon;
+            } else if (bodyName === 'Moon') {
+                const moonPos = Astronomy.EclipticGeoMoon(dateObj);
+                eclipticLon = moonPos.lon;
+            } else {
+                const vec = Astronomy.GeoVector(bodyName, dateObj, true);
+                const ecl = Astronomy.Ecliptic(vec);
+                eclipticLon = ecl.elon;
+            }
+
+            // 0〜360度に正規化
+            eclipticLon = ((eclipticLon % 360) + 360) % 360;
+            const signIndex = Math.floor(eclipticLon / 30);
+            const degreeInSign = Math.floor(eclipticLon % 30);
+
+            return {
+                ...ZODIAC_SIGNS[signIndex],
+                degree: degreeInSign,
+                rawLon: eclipticLon
+            };
+        }
+
+        // ③ 保護者向け「今日の声かけ・サポート予報」を生成（トランジット計算）
+        function renderTodayTransitForecast(natalSun, natalMoon) {
+            const now = new Date();
+            const todayMoon = getPlanetZodiac('Moon', now);
+            const todayMercury = getPlanetZodiac('Mercury', now);
+
+            const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+            document.getElementById('today-date-label').textContent = `${dateStr} の空の星模様`;
+            document.getElementById('transit-badge').textContent = `今日の月：${todayMoon.symbol}${todayMoon.name} / 水星：${todayMercury.symbol}${todayMercury.name}`;
+
+            // トランジットの月のエレメント別の予報アドバイス
+            const transitAdviceByElement = {
+                fire: {
+                    headline: "エネルギー全開！「短期集中・ゲーム感覚デー」",
+                    summary: `今日の月は【${todayMoon.name}（火のエレメント）】に滞在中。子どもたちの行動力や競争心が高まりやすい日ですが、長時間ダラダラやるのは集中力が切れやすい傾向があります。`,
+                    action: "今日は「15分タイマーをセットして、終わったら休憩！」のように短距離走スタイルで区切るのが大成功の秘訣です。",
+                    magicPhrase: "「今から15分だけ、どっちが早く終わるかタイムアタックしてみようか！」"
+                },
+                earth: {
+                    headline: "コツコツ定着！「じっくり積み上げデー」",
+                    summary: `今日の月は【${todayMoon.name}（地のエレメント）】に滞在中。落ち着いて机に向かいやすく、漢字練習や計算ドリルなど、手を動かして反復する学習がいつも以上に身につきやすい日です。`,
+                    action: "新しい難問に手を広げるより、「昨日やったことの復習」や「ノートの整理」に時間を使うと大きな自信につながります。",
+                    magicPhrase: "「すごく丁寧に書けてるね！この1ページが終わったらバッチリだね。」"
+                },
+                air: {
+                    headline: "好奇心アップ！「おしゃべり＆アウトプットデー」",
+                    summary: `今日の月は【${todayMoon.name}（風のエレメント）】に滞在中。頭の回転が速くなる反面、いろいろなことに興味が移って集中力が散漫になりやすい日でもあります。`,
+                    action: "黙々と一人で解かせるより、「今日習ったことをママ（パパ）に先生みたいに教えて！」と声に出して説明させると驚くほど定着します。",
+                    magicPhrase: "「へぇ〜、それってどういう仕組みなの？先生になって教えてくれない？」"
+                },
+                water: {
+                    headline: "想像力と共感が深まる「じっくり・寄り添いデー」",
+                    summary: `今日の月は【${todayMoon.name}（水のエレメント）】に滞在中。感受性が豊かになり、物語の読解やイメージを膨らませる学習に向いています。少し甘えたい気持ちや不安も出やすい日です。`,
+                    action: "叱ったり急かしたりするのは逆効果になりやすい日。リビングなど家族の気配がある場所で、「隣で見てるよ」と安心感を与えてあげると、驚くほど集中して取り組めます。",
+                    magicPhrase: "「難しいところがあったら一緒に考えようね。隣で応援してるよ！」"
+                }
+            };
+
+            const forecast = transitAdviceByElement[todayMoon.element];
+            // お子様の生まれ持った月との相性ボーナスコメント
+            let harmonyNote = "";
+            if (todayMoon.element === natalMoon.element) {
+                harmonyNote = `さらに今日は、お子様の生まれ持った月のエレメントと同じ空気感！いつも以上にリラックスして実力を発揮しやすいラッキーデーです。`;
+            } else if (todayMoon.element === natalSun.element) {
+                harmonyNote = `さらに今日は、お子様の太陽の星座と響き合う日！目標に向かって前向きなやる気が出やすいタイミングです。`;
+            }
+
+            document.getElementById('transit-forecast-box').innerHTML = `
+                <div class="flex items-center gap-2 text-amber-300 font-bold text-base sm:text-lg">
+                    <i data-lucide="sparkles" class="w-5 h-5 shrink-0"></i>
+                    <span>${forecast.headline}</span>
+                </div>
+                <p class="text-sm text-slate-200 leading-relaxed">
+                    ${forecast.summary}
+                </p>
+                <div class="bg-indigo-950/60 border border-indigo-400/25 rounded-xl p-3.5 text-xs sm:text-sm text-indigo-100 leading-relaxed">
+                    <div class="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                        <i data-lucide="lightbulb" class="w-4 h-4"></i>
+                        <span>今日の具体的なサポート法</span>
+                    </div>
+                    <p>${forecast.action} ${harmonyNote}</p>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 pt-1">
+                    <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-400/20 text-amber-300 self-start shrink-0">魔法の声かけ</span>
+                    <span class="text-sm font-bold text-white">${forecast.magicPhrase}</span>
+                </div>
+            `;
+        }
+
+        // メインの計算＆画面描画処理
+        function calculateAndRender() {
+            const dateVal = document.getElementById('birth-date').value;
+            if (!dateVal) return;
+
+            const isUnknownTime = document.getElementById('unknown-time').checked;
+            const timeVal = isUnknownTime ? "12:00" : (document.getElementById('birth-time').value || "12:00");
+            const childName = document.getElementById('child-name').value.trim() || "私";
+            const studyGoal = document.getElementById('study-goal').value.trim() || "日々の勉強や宿題";
+
+            // 日本時間（UTC+9）としてDateオブジェクトを生成
+            const isoString = `${dateVal}T${timeVal}:00+09:00`;
+            const birthDateObj = new Date(isoString);
+
+            // 7天体のサインを計算
+            const planets = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'];
+            const results = {};
+            planets.forEach(p => {
+                results[p] = getPlanetZodiac(p, birthDateObj);
+            });
+
+            // 時間不明時の通知バッジ切り替え
+            const moonNotice = document.getElementById('moon-notice');
+            if (isUnknownTime) {
+                moonNotice.classList.remove('hidden');
+            } else {
+                moonNotice.classList.add('hidden');
+            }
+
+            // ① 学習タイプ診断カードの生成（重要3天体：水星・月・火星）
+            const coreKeys = ['Mercury', 'Moon', 'Mars'];
+            const coreGrid = document.getElementById('core-planets-grid');
+            coreGrid.innerHTML = coreKeys.map(key => {
+                const sign = results[key];
+                const profile = PLANET_PROFILES[key];
+                const analysis = profile.getAnalysis(sign);
+                const isMoonUncertain = (key === 'Moon' && isUnknownTime);
+
+                return `
+                    <div class="glass-card rounded-2xl p-5 flex flex-col justify-between ${isMoonUncertain ? 'moon-uncertain' : 'moon-certain'}">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <span class="text-xs font-bold ${profile.color} flex items-center gap-1.5">
+                                    <i data-lucide="${profile.icon}" class="w-4 h-4"></i>
+                                    <span>${profile.title}</span>
+                                </span>
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-full ${profile.bgBadge}">
+                                    ${sign.symbol} ${sign.name} ${sign.degree}°
+                                </span>
+                            </div>
+                            <div class="text-base font-bold text-white mb-2">
+                                ${analysis.style}
+                                ${isMoonUncertain ? '<span class="block text-[11px] font-normal text-amber-300 mt-0.5">（※出生時間不明のため参考表示）</span>' : ''}
+                            </div>
+                            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                ${analysis.desc}
+                            </p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 text-[11px] text-slate-400">
+                            キーワード：${sign.keyword}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 残り4天体（太陽・金星・木星・土星）のカード生成
+            const subKeys = ['Sun', 'Venus', 'Jupiter', 'Saturn'];
+            const subGrid = document.getElementById('sub-planets-grid');
+            subGrid.innerHTML = subKeys.map(key => {
+                const sign = results[key];
+                const profile = PLANET_PROFILES[key];
+                const analysis = profile.getAnalysis(sign);
+
+                return `
+                    <div class="glass-card rounded-2xl p-5">
+                        <div class="flex items-center justify-between gap-2 mb-2.5">
+                            <span class="text-xs sm:text-sm font-bold ${profile.color} flex items-center gap-1.5">
+                                <i data-lucide="${profile.icon}" class="w-4 h-4"></i>
+                                <span>${profile.title}</span>
+                            </span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-slate-200">
+                                ${sign.symbol} ${sign.name}
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                            ${analysis.desc}
+                        </p>
+                    </div>
+                `;
+            }).join('');
+
+            // ② AI家庭教師プロンプトの組み立て
+            const mercuryInfo = PLANET_PROFILES.Mercury.getAnalysis(results.Mercury);
+            const jupiterInfo = PLANET_PROFILES.Jupiter.getAnalysis(results.Jupiter);
+            const sunInfo     = PLANET_PROFILES.Sun.getAnalysis(results.Sun);
+            const venusInfo   = PLANET_PROFILES.Venus.getAnalysis(results.Venus);
+            const moonInfo    = PLANET_PROFILES.Moon.getAnalysis(results.Moon);
+            const marsInfo    = PLANET_PROFILES.Mars.getAnalysis(results.Mars);
+            const saturnInfo  = PLANET_PROFILES.Saturn.getAnalysis(results.Saturn);
+
+            // 3つの柱バッジ更新
+            document.getElementById('pillar-teaching').textContent = `${mercuryInfo.style} × ${results.Jupiter.name}の強み`;
+            document.getElementById('pillar-persona').textContent = `${results.Sun.name}の動機づけ × ${results.Venus.name}の楽しさ`;
+            document.getElementById('pillar-support').textContent = `${isUnknownTime ? '標準安心フォロー' : moonInfo.style} × ${marsInfo.style}`;
+
+            const moonPromptLine = isUnknownTime
+                ? `・不安になったりつまずいたりした時は、否定せず優しく受け止めて安心させてください。`
+                : `・【安心感の作り方（月：${results.Moon.name}）】${moonInfo.prompt}`;
+
+            const promptText = `あなたは${childName}専用の優秀で優しい「AI家庭教師」です。
+これから「${studyGoal}」を中心に学習のサポートをお願いします。
+${childName}の学習特性に合わせて、以下のルールを必ず守って教えてください。
+
+【1. 基本の教え方・アプローチ】
+・${mercuryInfo.prompt}
+・${jupiterInfo.prompt}
+・一度にたくさんの情報を詰め込まず、小学生〜中学生にもわかる噛み砕いた言葉で説明してください。
+
+【2. AIの口調・キャラクター・楽しませ方】
+・${sunInfo.prompt}
+・${venusInfo.prompt}
+・先生と生徒の対話を大切にし、こちらが答えやすい質問を投げかけながら進めてください。
+
+【3. つまずいた時のフォロー＆やる気管理】
+${moonPromptLine}
+・【やる気スイッチ（火星：${results.Mars.name}）】${marsInfo.prompt}
+・【継続・苦手克服のコツ（土星：${results.Saturn.name}）】${saturnInfo.prompt}
+
+準備ができたら、「${childName}、一緒に楽しく頑張ろう！今日は何から始める？」と元気に声をかけてスタートしてください！`;
+
+            document.getElementById('generated-prompt').value = promptText;
+
+            // ③ 保護者向け「今日の声かけ・サポート予報」更新
+            renderTodayTransitForecast(results.Sun, results.Moon);
+
+            // ④ 星のタイプ別「おすすめ勉強法＆ラッキーグッズ」更新
+            currentUserSunElement = results.Sun.element;
+            currentUserMercuryElement = results.Mercury.element;
+
+            const sunGuideName = ELEMENT_STUDY_GUIDES[currentUserSunElement].title.split('（')[0];
+            const mercuryGuideName = ELEMENT_STUDY_GUIDES[currentUserMercuryElement].title.split('（')[0];
+
+            let userBadgeHtml = `
+                <button type="button" onclick="renderElementGuide('${currentUserSunElement}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-200 border border-amber-400/40 hover:bg-amber-400/30 transition cursor-pointer">
+                    <span>☀ 太陽（やる気）：${results.Sun.name}【${sunGuideName}】</span>
+                </button>
+            `;
+            if (currentUserSunElement !== currentUserMercuryElement) {
+                userBadgeHtml += `
+                    <button type="button" onclick="renderElementGuide('${currentUserMercuryElement}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-400/20 text-sky-200 border border-sky-400/40 hover:bg-sky-400/30 transition cursor-pointer">
+                        <span>☿ 水星（学び方）：${results.Mercury.name}【${mercuryGuideName}】</span>
+                    </button>
+                `;
+            } else {
+                userBadgeHtml += `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-400/20 text-sky-200 border border-sky-400/40">
+                        <span>☿ 水星（学び方）も同じ【${mercuryGuideName}】タイプ！</span>
+                    </span>
+                `;
+            }
+            document.getElementById('element-user-badges').innerHTML = userBadgeHtml;
+
+            // 初期表示は学び方の要である「水星」のグループを選択
+            renderElementGuide(currentUserMercuryElement);
+
+            // Lucideアイコンの再描画
+            lucide.createIcons();
+        }
+
+        // イベントリスナー設定
+        window.addEventListener('DOMContentLoaded', () => {
+            // デフォルトの生年月日（サンプルとして2015年5月15日をセット）
+            const birthDateInput = document.getElementById('birth-date');
+            if (!birthDateInput.value) {
+                birthDateInput.value = "2015-05-15";
+            }
+
+            // 出生時間「不明」チェックボックスの制御
+            const unknownCheckbox = document.getElementById('unknown-time');
+            const birthTimeInput = document.getElementById('birth-time');
+            unknownCheckbox.addEventListener('change', () => {
+                birthTimeInput.disabled = unknownCheckbox.checked;
+                calculateAndRender();
+            });
+
+            // 計算ボタン
+            document.getElementById('calculate-btn').addEventListener('click', calculateAndRender);
+
+            // 入力変更時のリアルタイム反映
+            ['birth-date', 'birth-time', 'birth-place'].forEach(id => {
+                document.getElementById(id).addEventListener('change', calculateAndRender);
+            });
+
+            // 4グループ切り替えタブのクリックイベント
+            document.querySelectorAll('.element-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const el = btn.getAttribute('data-element');
+                    renderElementGuide(el);
+                });
+            });
+
+            // プロンプトコピーボタン（iframe制限を考慮し execCommand を使用）
+            document.getElementById('copy-prompt-btn').addEventListener('click', () => {
+                const textarea = document.getElementById('generated-prompt');
+                textarea.select();
+                textarea.setSelectionRange(0, 99999);
+                try {
+                    document.execCommand('copy');
+                    const toast = document.getElementById('toast');
+                    toast.classList.remove('opacity-0');
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0');
+                    }, 2600);
+                } catch (err) {
+                    console.error('コピーに失敗しました', err);
+                }
+            });
+
+            // 初回計算実行
+            calculateAndRender();
+        });
+    </script>
+</body>
+</html>
